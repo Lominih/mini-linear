@@ -1,4 +1,4 @@
-﻿import { PrismaClient, SystemRole, ProjectMemberRole } from "@/generated/prisma";
+import { PrismaClient } from "@prisma/client";`nimport { SystemRole, ProjectMemberRole } from "@/generated/prisma/enums";
 
 // ------ Types ----------------------------------------------------------------------------------------------
 
