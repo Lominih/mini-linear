@@ -1,5 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { SystemRole, ProjectMemberRole } from "@/generated/prisma/enums";
+﻿import { describe, it, expect, vi, beforeEach } from "vitest";
+const SystemRole = { OWNER: 'OWNER', ADMIN: 'ADMIN', MEMBER: 'MEMBER', VIEWER: 'VIEWER' } as const;
+type SystemRole = (typeof SystemRole)[keyof typeof SystemRole];
+const ProjectMemberRole = { OWNER: 'OWNER', ADMIN: 'ADMIN', MEMBER: 'MEMBER', VIEWER: 'VIEWER' } as const;
+type ProjectMemberRole = (typeof ProjectMemberRole)[keyof typeof ProjectMemberRole];
 
 // Mock prisma before importing rbac
 vi.mock("@/server/prisma", () => ({
@@ -13,7 +16,7 @@ const mockPrisma = {
   projectMember: { findUnique: vi.fn() },
 };
 
-// ─── System Role Hierarchy (pure, no DB) ─────────────────────────────────────
+// 鈹€鈹€鈹€ System Role Hierarchy (pure, no DB) 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
 import { hasRole, hasProjectRole, getProjectPermissions } from "@/server/rbac";
 
@@ -43,7 +46,7 @@ describe("hasRole", () => {
   });
 });
 
-// ─── Project Role Hierarchy ──────────────────────────────────────────────────
+// 鈹€鈹€鈹€ Project Role Hierarchy 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
 describe("hasProjectRole", () => {
   it("OWNER meets OWNER requirement", () => {
@@ -67,7 +70,7 @@ describe("hasProjectRole", () => {
   });
 });
 
-// ─── Get Project Permissions ─────────────────────────────────────────────────
+// 鈹€鈹€鈹€ Get Project Permissions 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
 describe("getProjectPermissions", () => {
   it("OWNER gets all permission categories", () => {
@@ -108,7 +111,7 @@ describe("getProjectPermissions", () => {
   });
 });
 
-// ─── checkPermission (using mocked prisma) ──────────────────────────────────
+// 鈹€鈹€鈹€ checkPermission (using mocked prisma) 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
 describe("checkPermission", () => {
   beforeEach(() => {
