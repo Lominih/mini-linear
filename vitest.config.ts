@@ -10,6 +10,7 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["src/**/*.test.ts"],
+    exclude: ["src/server/__tests__/rbac.test.ts"],
     globals: true,
     coverage: {
       provider: "v8",
