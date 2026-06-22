@@ -1,0 +1,157 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  password  String
+  avatar    String?
+  role      String   @default("MEMBER")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  assignedIssues    Issue[]            @relation("Assignee")
+  reportedIssues    Issue[]            @relation("Reporter")
+  comments          Comment[]
+  auditLogs         AuditLog[]
+  notifications     Notification[]
+  projectMembers    ProjectMember[]
+  ownedProjects     Project[]          @relation("ProjectOwner")
+  views             View[]
+}
+
+model Project {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  key         String   @unique
+  status      String   @default("ACTIVE")
+  ownerId     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  owner       User            @relation("ProjectOwner", fields: [ownerId], references: [id])
+  members     ProjectMember[]
+  issues      Issue[]
+  sprints     Sprint[]
+  views       View[]
+}
+
+model ProjectMember {
+  id        String   @id @default(uuid())
+  projectId String
+  userId    String
+  role      String   @default("MEMBER")
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([projectId, userId])
+}
+
+model Issue {
+  id           String   @id @default(uuid())
+  title        String
+  description  String?
+  status       String   @default("BACKLOG")
+  priority     String   @default("NONE")
+  labels       String   @default("[]")
+  assigneeId   String?
+  reporterId   String
+  projectId    String
+  sprintId     String?
+  dueDate      DateTime?
+  parentId     String?
+  order        Float    @default(0)
+  customFields String   @default("{}")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  assignee  User?          @relation("Assignee", fields: [assigneeId], references: [id])
+  reporter  User           @relation("Reporter", fields: [reporterId], references: [id])
+  project   Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sprint    Sprint?        @relation(fields: [sprintId], references: [id], onDelete: SetNull)
+  parent    Issue?         @relation("SubIssues", fields: [parentId], references: [id])
+  children  Issue[]        @relation("SubIssues")
+  comments  Comment[]
+  fromRelations IssueRelation[] @relation("FromIssue")
+  toRelations   IssueRelation[] @relation("ToIssue")
+}
+
+model IssueRelation {
+  id          String @id @default(uuid())
+  fromIssueId String
+  toIssueId   String
+  type        String
+  fromIssue Issue @relation("FromIssue", fields: [fromIssueId], references: [id], onDelete: Cascade)
+  toIssue   Issue @relation("ToIssue", fields: [toIssueId], references: [id], onDelete: Cascade)
+  @@unique([fromIssueId, toIssueId, type])
+}
+
+model Sprint {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  startDate   DateTime
+  endDate     DateTime
+  goal        String?
+  status      String   @default("PLANNED")
+  projectId   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  issues  Issue[]
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  content   String
+  authorId  String
+  issueId   String
+  parentId  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  author   User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  issue    Issue     @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  parent   Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
+  replies  Comment[] @relation("CommentReplies")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  action    String
+  entity    String
+  entityId  String
+  userId    String
+  details   String   @default("{}")
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  type      String
+  message   String
+  userId    String
+  read      Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model View {
+  id        String   @id @default(uuid())
+  name      String
+  type      String
+  filters   String   @default("{}")
+  projectId String
+  userId    String
+  shared    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
