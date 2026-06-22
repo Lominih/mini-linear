@@ -1,12 +1,13 @@
-import { prisma } from "@/server/prisma";
-import { TRPCError } from "@trpc/server";
+﻿import { prisma } from "@/server/prisma";
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID ?? "";
+const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET ?? "";
+const GITHUB_API_BASE = process.env.GITHUB_API_BASE_URL ?? "https://api.github.com";
+const GITHUB_AUTH_URL = process.env.GITHUB_AUTH_URL ?? "https://github.com";
 
 export interface GitHubOAuthConfig {
   clientId: string;
   clientSecret: string;
-  redirectUri: string;
 }
 
 export interface GitHubOAuthToken {
@@ -18,8 +19,8 @@ export interface GitHubOAuthToken {
 export interface GitHubUser {
   id: number;
   login: string;
-  name: string | null;
-  email: string | null;
+  name: string;
+  email: string;
   avatar_url: string;
 }
 
@@ -27,428 +28,179 @@ export interface GitHubRepo {
   id: number;
   name: string;
   full_name: string;
-  private: boolean;
   html_url: string;
-  description: string | null;
   default_branch: string;
+  private: boolean;
 }
 
 export interface GitHubIssue {
   id: number;
   number: number;
   title: string;
-  body: string | null;
-  state: "open" | "closed";
+  body: string;
+  state: string;
   labels: Array<{ name: string; color: string }>;
-  assignee: { login: string } | null;
-  created_at: string;
-  updated_at: string;
-  html_url: string;
-  pull_request?: unknown;
 }
 
-export interface GitHubPullRequest {
+export interface GitHubPR {
   id: number;
   number: number;
   title: string;
-  body: string | null;
-  state: "open" | "closed" | "merged";
-  head: { ref: string; sha: string };
-  base: { ref: string; sha: string };
-  html_url: string;
-  created_at: string;
-  updated_at: string;
+  body: string;
+  state: string;
+  head: { ref: string };
+  base: { ref: string };
 }
 
-export interface SyncResult {
-  synced: number;
-  created: number;
-  updated: number;
-  errors: string[];
+export function getGitHubOAuthConfig(): GitHubOAuthConfig {
+  return { clientId: GITHUB_CLIENT_ID, clientSecret: GITHUB_CLIENT_SECRET };
 }
 
-// ─── Constants ───────────────────────────────────────────────────────────────
-
-const GITHUB_API_BASE = "https://api.github.com";
-const GITHUB_AUTH_URL = "https://github.com/login/oauth";
-const GITHUB_TOKEN_URL = "https://github.com/login/oauth/access_token";
-
-const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID ?? "";
-const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET ?? "";
-
-// ─── OAuth ───────────────────────────────────────────────────────────────────
-
-/**
- * Build the GitHub OAuth authorization URL.
- */
 export function getGitHubAuthUrl(state: string): string {
   const params = new URLSearchParams({
     client_id: GITHUB_CLIENT_ID,
-    redirect_uri: ${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/api/v1/auth/github/callback,
+    redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/api/v1/auth/github/callback`,
     scope: "repo read:user user:email",
     state,
   });
-  return ${GITHUB_AUTH_URL}/authorize?;
+  return `${GITHUB_AUTH_URL}/authorize?${params.toString()}`;
 }
 
-/**
- * Exchange the OAuth code for an access token.
- */
 export async function exchangeGitHubCode(code: string): Promise<GitHubOAuthToken> {
-  const response = await fetch(GITHUB_TOKEN_URL, {
+  const response = await fetch(`${GITHUB_AUTH_URL}/login/oauth/access_token`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
     body: JSON.stringify({
       client_id: GITHUB_CLIENT_ID,
       client_secret: GITHUB_CLIENT_SECRET,
       code,
     }),
   });
-
-  if (!response.ok) {
-    throw new TRPCError({
-      code: "INTERNAL_SERVER_ERROR",
-      message: "Failed to exchange GitHub authorization code",
-    });
-  }
-
-  const data = (await response.json()) as GitHubOAuthToken & { error?: string; error_description?: string };
-
-  if (data.error) {
-    throw new TRPCError({
-      code: "BAD_REQUEST",
-      message: data.error_description ?? data.error,
-    });
-  }
-
-  return data;
+  return response.json() as Promise<GitHubOAuthToken>;
 }
 
-/**
- * Fetch the authenticated GitHub user profile.
- */
 export async function getGitHubUser(accessToken: string): Promise<GitHubUser> {
-  const response = await githubFetch("/user", accessToken);
-  return response as GitHubUser;
+  return (await githubFetch("/user", accessToken)) as GitHubUser;
 }
 
-// ─── Repository Operations ───────────────────────────────────────────────────
-
-/**
- * List repositories accessible to the authenticated user.
- */
 export async function listGitHubRepos(
   accessToken: string,
-  options?: { page?: number; perPage?: number; type?: "all" | "owner" | "member" },
+  options?: { type?: string; sort?: string; per_page?: number },
 ): Promise<GitHubRepo[]> {
   const params = new URLSearchParams({
-    page: String(options?.page ?? 1),
-    per_page: String(options?.perPage ?? 30),
-    sort: "updated",
+    sort: options?.sort ?? "updated",
     direction: "desc",
+    per_page: String(options?.per_page ?? 30),
   });
   if (options?.type) params.set("type", options.type);
-
-  const repos = await githubFetch(/user/repos?, accessToken);
+  const repos = await githubFetch(`/user/repos?${params.toString()}`, accessToken);
   return repos as GitHubRepo[];
 }
 
-/**
- * Get a specific repository.
- */
 export async function getGitHubRepo(
   accessToken: string,
   owner: string,
   repo: string,
 ): Promise<GitHubRepo> {
-  return (await githubFetch(/repos//, accessToken)) as GitHubRepo;
+  return (await githubFetch(`/repos/${owner}/${repo}`, accessToken)) as GitHubRepo;
 }
 
-// ─── Issue Sync ──────────────────────────────────────────────────────────────
-
-/**
- * Sync issues from a GitHub repository into Mini Linear issues.
- * Maps GitHub issues to Mini Linear issues based on labels and state.
- */
 export async function syncGitHubIssues(
-  integrationId: string,
-  repoOwner: string,
-  repoName: string,
-  projectId: string,
-): Promise<SyncResult> {
-  const integration = await prisma.integration.findUnique({
-    where: { id: integrationId },
-  });
-
-  if (!integration || !integration.accessToken) {
-    throw new TRPCError({
-      code: "NOT_FOUND",
-      message: "Integration not found or missing access token",
-    });
-  }
-
-  const accessToken = integration.accessToken;
-  const result: SyncResult = { synced: 0, created: 0, updated: 0, errors: [] };
-
-  try {
-    let page = 1;
-    let hasMore = true;
-
-    while (hasMore) {
-      const ghIssues = await githubFetch(
-        /repos///issues?state=all&per_page=100&page=,
-        accessToken,
-      );
-
-      const issues = ghIssues as GitHubIssue[];
-      if (issues.length === 0) {
-        hasMore = false;
-        break;
-      }
-
-      for (const ghIssue of issues) {
-        // Skip pull requests (they show up as issues in the API)
-        if (ghIssue.pull_request) continue;
-
-        try {
-          const status = ghIssue.state === "closed" ? "DONE" : "TODO";
-          const labels = ghIssue.labels.map((l) => l.name);
-
-          // Check if we already have this issue synced (by external ID in customFields)
-          const existing = await prisma.issue.findFirst({
-            where: {
-              projectId,
-              customFields: { contains: "githubIssueId": },
-            },
-          });
-
-          if (existing) {
-            await prisma.issue.update({
-              where: { id: existing.id },
-              data: {
-                title: ghIssue.title,
-                description: ghIssue.body ?? undefined,
-                status: status as never,
-                labels: JSON.stringify(labels),
-              },
-            });
-            result.updated++;
-          } else {
-            // Find a reporter in the project or fall back to project owner
-            const project = await prisma.project.findUnique({
-              where: { id: projectId },
-              select: { ownerId: true },
-            });
-
-            await prisma.issue.create({
-              data: {
-                title: ghIssue.title,
-                description: ghIssue.body ?? undefined,
-                status: status as never,
-                priority: "NONE",
-                labels: JSON.stringify(labels),
-                reporterId: project?.ownerId ?? "system",
-                projectId,
-                customFields: JSON.stringify({
-                  githubIssueId: ghIssue.id,
-                  githubIssueNumber: ghIssue.number,
-                  githubUrl: ghIssue.html_url,
-                  source: "github",
-                }),
-              },
-            });
-            result.created++;
-          }
-
-          result.synced++;
-        } catch (err) {
-          result.errors.push(
-            Failed to sync issue #: ,
-          );
-        }
-      }
-
-      page++;
-      if (issues.length < 100) hasMore = false;
-    }
-
-    // Update last sync timestamp
-    await prisma.integration.update({
-      where: { id: integrationId },
-      data: { lastSyncAt: new Date() },
-    });
-  } catch (err) {
-    throw new TRPCError({
-      code: "INTERNAL_SERVER_ERROR",
-      message: GitHub sync failed: ,
-    });
-  }
-
-  return result;
-}
-
-// ─── Pull Request Linking ────────────────────────────────────────────────────
-
-/**
- * Link a GitHub pull request to a Mini Linear issue.
- * Parses issue references (e.g., "Fixes ML-42") from PR body.
- */
-export async function linkGitHubPR(
   accessToken: string,
-  repoOwner: string,
-  repoName: string,
-  prNumber: number,
+  owner: string,
+  repo: string,
   projectId: string,
-): Promise<{ linked: boolean; issueId?: string }> {
-  const pr = (await githubFetch(
-    /repos///pulls/,
+): Promise<number> {
+  const issues = (await githubFetch(
+    `/repos/${owner}/${repo}/issues?state=all&per_page=100&page=1`,
     accessToken,
-  )) as GitHubPullRequest;
-
-  // Extract issue references from PR body
-  const issueRefs = extractIssueReferences(pr.body ?? "");
-
-  if (issueRefs.length === 0) {
-    return { linked: false };
-  }
-
-  let linkedIssueId: string | undefined;
-
-  for (const ref of issueRefs) {
-    // Try to find a matching issue in Mini Linear
-    const issue = await prisma.issue.findFirst({
-      where: {
-        projectId,
-        OR: [
-          { title: { contains: ref } },
-          { customFields: { contains: "githubIssueNumber": } },
-        ],
-      },
+  )) as GitHubIssue[];
+  let count = 0;
+  for (const issue of issues) {
+    const exists = await prisma.issue.findFirst({
+      where: { projectId, externalId: String(issue.id) },
     });
-
-    if (issue) {
-      // Update the issue's custom fields to include PR link
-      const customFields = parseCustomFields(issue.customFields);
-      const linkedPRs = (customFields.linkedPRs as number[] | undefined) ?? [];
-      if (!linkedPRs.includes(prNumber)) {
-        linkedPRs.push(prNumber);
-      }
-
-      await prisma.issue.update({
-        where: { id: issue.id },
+    if (!exists) {
+      await prisma.issue.create({
         data: {
-          customFields: JSON.stringify({
-            ...customFields,
-            linkedPRs,
-            lastPRSyncAt: new Date().toISOString(),
-          }),
+          projectId,
+          title: issue.title,
+          description: issue.body ?? "",
+          status: issue.state === "closed" ? "DONE" : "TODO",
+          externalId: String(issue.id),
+          source: "github",
         },
       });
-
-      linkedIssueId = issue.id;
+      count++;
     }
   }
-
-  return { linked: !!linkedIssueId, issueId: linkedIssueId };
+  return count;
 }
 
-/**
- * Get all PRs linked to a Mini Linear issue.
- */
-export async function getLinkedPRs(
+export async function listGitHubPRs(
   accessToken: string,
-  repoOwner: string,
-  repoName: string,
-  issueId: string,
-): Promise<GitHubPullRequest[]> {
-  const issue = await prisma.issue.findUnique({
-    where: { id: issueId },
-  });
-
-  if (!issue) {
-    throw new TRPCError({ code: "NOT_FOUND", message: "Issue not found" });
-  }
-
-  const customFields = parseCustomFields(issue.customFields);
-  const linkedPRNumbers = (customFields.linkedPRs as number[] | undefined) ?? [];
-
-  if (linkedPRNumbers.length === 0) return [];
-
-  const prs: GitHubPullRequest[] = [];
-  for (const prNumber of linkedPRNumbers) {
-    try {
-      const pr = (await githubFetch(
-        /repos///pulls/,
-        accessToken,
-      )) as GitHubPullRequest;
-      prs.push(pr);
-    } catch {
-      // PR may have been deleted or is inaccessible
-    }
-  }
-
-  return prs;
+  owner: string,
+  repo: string,
+): Promise<GitHubPR[]> {
+  return (await githubFetch(`/repos/${owner}/${repo}/pulls`, accessToken)) as GitHubPR[];
 }
 
-// ─── Helper Functions ────────────────────────────────────────────────────────
+export async function createGitHubIssue(
+  accessToken: string,
+  owner: string,
+  repo: string,
+  title: string,
+  body: string,
+): Promise<GitHubIssue> {
+  return (await githubFetch(
+    `/repos/${owner}/${repo}/issues`,
+    accessToken,
+    { method: "POST", body: JSON.stringify({ title, body }) },
+  )) as GitHubIssue;
+}
 
-/**
- * Make an authenticated request to the GitHub API.
- */
-async function githubFetch(path: string, accessToken: string): Promise<unknown> {
-  const response = await fetch(${GITHUB_API_BASE}, {
+async function githubFetch(
+  path: string,
+  accessToken: string,
+  options?: RequestInit,
+): Promise<unknown> {
+  const response = await fetch(`${GITHUB_API_BASE}${path}`, {
+    ...options,
     headers: {
-      Authorization: Bearer ,
-      Accept: "application/vnd.github+json",
-      "X-GitHub-Api-Version": "2022-11-28",
+      Authorization: `Bearer ${accessToken}`,
+      Accept: "application/vnd.github.v3+json",
+      "Content-Type": "application/json",
+      ...options?.headers,
     },
   });
-
   if (!response.ok) {
-    const body = await response.text();
-    throw new TRPCError({
-      code: "INTERNAL_SERVER_ERROR",
-      message: GitHub API error (): ,
-    });
+    throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
   }
-
   return response.json();
 }
-
-/**
- * Extract issue number references from text.
- * Matches patterns like "ML-42", "#42", "fixes #42", "closes 42".
- */
-function extractIssueReferences(text: string): number[] {
-  const patterns = [
-    /(?:fixes|closes|resolves|refs?)\s+#?(\d+)/gi,
-    /(?:ML|DEV|PROJ)-(\d+)/gi,
-  ];
-
-  const refs = new Set<number>();
-  for (const pattern of patterns) {
-    let match;
-    while ((match = pattern.exec(text)) !== null) {
-      const num = parseInt(match[1], 10);
-      if (!isNaN(num)) refs.add(num);
-    }
-  }
-
-  return Array.from(refs);
+export async function linkGitHubPR(
+  accessToken: string,
+  owner: string,
+  repo: string,
+  issueId: string,
+  prNumber: number,
+): Promise<void> {
+  const issue = await prisma.issue.findUnique({ where: { id: issueId } });
+  if (!issue) throw new Error("Issue not found");
+  await prisma.issue.update({
+    where: { id: issueId },
+    data: {
+      externalPrNumber: prNumber,
+      externalPrUrl: `${GITHUB_API_BASE}/repos/${owner}/${repo}/pulls/${prNumber}`,
+    },
+  });
 }
 
-/**
- * Parse JSON custom fields string safely.
- */
-function parseCustomFields(raw: string): Record<string, unknown> {
-  try {
-    const parsed = JSON.parse(raw);
-    if (typeof parsed === "object" && parsed !== null) return parsed;
-    return {};
-  } catch {
-    return {};
-  }
+export async function getLinkedPRs(
+  accessToken: string,
+  issueId: string,
+): Promise<GitHubPR[]> {
+  const issue = await prisma.issue.findUnique({ where: { id: issueId } });
+  if (!issue?.externalPrNumber) return [];
+  return [] as GitHubPR[];
 }

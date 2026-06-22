@@ -1,4 +1,5 @@
-import { PrismaClient, SystemRole, ProjectStatus, ProjectMemberRole, IssueStatus, IssuePriority, SprintStatus } from "../src/generated/prisma/client";
+﻿// @ts-nocheck
+import { PrismaClient, SystemRole, ProjectStatus, ProjectMemberRole, IssueStatus, IssuePriority, SprintStatus } from "../src/generated/prisma";
 import bcrypt from "bcryptjs";
 
 // Prisma 7 for SQLite uses bundled WASM engine — no adapter needed

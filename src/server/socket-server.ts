@@ -1,7 +1,7 @@
-import { Server as HttpServer } from "http";
+﻿import { Server as HttpServer } from "http";
 import { Server, type Socket } from "socket.io";
 import { verifyAccessToken, type TokenPayload } from "@/server/auth";
-import { PrismaClient } from "@/generated/prisma/client";
+import { PrismaClient } from "@/generated/prisma";
 import type {
   ClientToServerEvents,
   ServerToClientEvents,

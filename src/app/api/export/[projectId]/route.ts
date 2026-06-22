@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { exportProjectData } from "@/server/export";
 import { verifyAccessToken } from "@/server/auth";
 
@@ -36,19 +36,18 @@ export async function GET(
     const format = searchParams.get("format") ?? "json";
 
     if (format === "download") {
-      const filename = mini-linear--export-.json;
+      const filename = `mini-linear-export-${projectId}.json`;
       return new NextResponse(JSON.stringify(data, null, 2), {
         status: 200,
         headers: {
           "Content-Type": "application/json",
-          "Content-Disposition": ttachment; filename="",
+          "Content-Disposition": `attachment; filename="${filename}"`,
         },
       });
     }
 
     return NextResponse.json({ data });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Export failed";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: "Export failed" }, { status: 500 });
   }
 }

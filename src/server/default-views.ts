@@ -1,6 +1,6 @@
-import { type PrismaClient } from "@/generated/prisma/client";
+﻿import { type PrismaClient } from "@/generated/prisma";
 
-// 鈹€鈹€鈹€ Default View Definitions 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+// ------ Default View Definitions ------------------------------------------------------------------------------------------------
 
 interface DefaultViewDef {
   name: string;
@@ -50,7 +50,7 @@ const DEFAULT_VIEWS: DefaultViewDef[] = [
   },
 ];
 
-// 鈹€鈹€鈹€ Create Default Views 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+// ------ Create Default Views --------------------------------------------------------------------------------------------------------
 
 export async function createDefaultViews(
   prisma: PrismaClient,

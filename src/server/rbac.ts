@@ -1,6 +1,6 @@
-import { PrismaClient, SystemRole, ProjectMemberRole } from "@/generated/prisma/client";
+﻿import { PrismaClient, SystemRole, ProjectMemberRole } from "@/generated/prisma";
 
-// 鈹€鈹€鈹€ Types 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+// ------ Types ----------------------------------------------------------------------------------------------
 
 export type Role = SystemRole | ProjectMemberRole;
 
@@ -41,7 +41,7 @@ export interface PermissionCheckResult {
   reason?: string;
 }
 
-// 鈹€鈹€鈹€ Permission Matrix 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+// ------ Permission Matrix ----------------------------------------------------------------------
 
 const SYSTEM_ROLE_HIERARCHY: Record<SystemRole, number> = {
   VIEWER: 0,
@@ -142,7 +142,7 @@ const GLOBAL_ADMIN_ACTIONS: Action[] = [
   "project.manage_members",
 ];
 
-// 鈹€鈹€鈹€ Helpers 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+// ------ Helpers ------------------------------------------------------------------------------------------
 
 function getRequiredProjectRoleForAction(action: Action): ProjectMemberRole | null {
   const roles: ProjectMemberRole[] = ["VIEWER", "MEMBER", "ADMIN", "OWNER"];
@@ -170,7 +170,7 @@ function projectRoleMeetsRequirement(
   return PROJECT_ROLE_HIERARCHY[userRole] >= PROJECT_ROLE_HIERARCHY[requiredRole];
 }
 
-// 鈹€鈹€鈹€ Core RBAC 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+// ------ Core RBAC --------------------------------------------------------------------------------------
 
 export async function checkPermission(
   prisma: PrismaClient,

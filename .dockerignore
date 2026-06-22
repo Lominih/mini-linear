@@ -1,5 +1,12 @@
-node_modules
+﻿node_modules
 .next
 .git
 *.md
 src/__tests__
+src/generated
+.env
+.env.*
+!.env.example
+coverage
+*.db
+*.db-journal

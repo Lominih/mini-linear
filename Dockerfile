@@ -1,21 +1,20 @@
-# ─── Stage 1: Dependencies ────────────────────────────────────────────────────
+﻿# ---- Stage 1: Dependencies ----
 FROM node:20-slim AS deps
 WORKDIR /app
 
 COPY package.json package-lock.json ./
 RUN npm ci --ignore-scripts
 
-# ─── Stage 2: Prisma Generate ────────────────────────────────────────────────
+# ---- Stage 2: Prisma Generate ----
 FROM deps AS prisma
 COPY prisma ./prisma
 RUN npx prisma generate
 
-# ─── Stage 3: Build ──────────────────────────────────────────────────────────
+# ---- Stage 3: Build ----
 FROM node:20-slim AS builder
 WORKDIR /app
 
 COPY --from=prisma /app/node_modules ./node_modules
-# Generated files are created by prisma generate in deps stage
 COPY . .
 RUN rm -rf ./src/generated && npx prisma generate
 
@@ -24,7 +23,7 @@ ENV NODE_ENV=production
 
 RUN npx next build
 
-# ─── Stage 4: Production ─────────────────────────────────────────────────────
+# ---- Stage 4: Production ----
 FROM node:20-slim AS runner
 WORKDIR /app
 

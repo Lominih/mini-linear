@@ -1,6 +1,6 @@
 ﻿import { applyFilters, normalizeStatus, type ViewFilters } from "@/server/filter-engine";
 
-// 鈹€鈹€鈹€ Types 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+// ------ Types --------------------------------------------------------------------------------------------------------------------------------------
 
 export interface KanbanIssue {
   id: string;
@@ -32,7 +32,7 @@ export interface KanbanBoard {
   totalIssues: number;
 }
 
-// 鈹€鈹€鈹€ Status Definitions 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+// ------ Status Definitions ------------------------------------------------------------------------------------------------------------
 
 const STATUS_COLUMNS: { status: string; label: string }[] = [
   { status: "backlog", label: "Backlog" },
@@ -43,7 +43,7 @@ const STATUS_COLUMNS: { status: string; label: string }[] = [
   { status: "cancelled", label: "Cancelled" },
 ];
 
-// 鈹€鈹€鈹€ Label Parser (SQLite JSON string) 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+// ------ Label Parser (SQLite JSON string) ------------------------------------------------------------------------------
 
 function parseLabels(raw: unknown): string[] {
   if (Array.isArray(raw)) return raw.map(String);
@@ -56,7 +56,7 @@ function parseLabels(raw: unknown): string[] {
   }
 }
 
-// 鈹€鈹€鈹€ Kanban Board Computation 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+// ------ Kanban Board Computation ------------------------------------------------------------------------------------------------
 
 export function computeKanbanBoard(
   issues: KanbanIssue[],

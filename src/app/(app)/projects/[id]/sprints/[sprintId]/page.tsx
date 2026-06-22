@@ -83,7 +83,7 @@ export default function SprintDetailPage({
                 <div className="text-sm text-muted-foreground">
                   {(sprint as { startDate: string }).startDate &&
                     new Date((sprint as { startDate: string }).startDate).toLocaleDateString()}{" "}
-                  ¡ª{" "}
+                  Â¡Âª{" "}
                   {(sprint as { endDate: string }).endDate &&
                     new Date((sprint as { endDate: string }).endDate).toLocaleDateString()}
                 </div>

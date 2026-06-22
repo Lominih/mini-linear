@@ -1,7 +1,14 @@
-import { prisma } from "@/server/prisma";
-import { TRPCError } from "@trpc/server";
+﻿import { prisma } from "@/server/prisma";
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+const GITLAB_CLIENT_ID = process.env.GITLAB_CLIENT_ID ?? "";
+const GITLAB_CLIENT_SECRET = process.env.GITLAB_CLIENT_SECRET ?? "";
+const GITLAB_API_BASE = process.env.GITLAB_API_BASE_URL ?? "https://gitlab.com/api/v4";
+const GITLAB_AUTH_URL = process.env.GITLAB_AUTH_URL ?? "https://gitlab.com";
+
+export interface GitLabOAuthConfig {
+  clientId: string;
+  clientSecret: string;
+}
 
 export interface GitLabUser {
   id: number;
@@ -9,380 +16,142 @@ export interface GitLabUser {
   name: string;
   email: string;
   avatar_url: string;
-  web_url: string;
 }
 
 export interface GitLabProject {
   id: number;
   name: string;
-  path: string;
   path_with_namespace: string;
   web_url: string;
-  description: string | null;
   default_branch: string;
-  visibility: "public" | "internal" | "private";
+  visibility: string;
 }
 
 export interface GitLabIssue {
-  id: number;
   iid: number;
   title: string;
-  description: string | null;
-  state: "opened" | "closed";
+  description: string;
+  state: string;
   labels: string[];
-  assignees: Array<{ username: string; name: string }>;
-  created_at: string;
-  updated_at: string;
-  web_url: string;
 }
 
-export interface GitLabMergeRequest {
-  id: number;
-  iid: number;
-  title: string;
-  description: string | null;
-  state: "opened" | "closed" | "merged";
-  source_branch: string;
-  target_branch: string;
-  web_url: string;
-  created_at: string;
-  updated_at: string;
+export function getGitLabOAuthConfig(): GitLabOAuthConfig {
+  return { clientId: GITLAB_CLIENT_ID, clientSecret: GITLAB_CLIENT_SECRET };
 }
 
-export interface GitLabSyncResult {
-  synced: number;
-  created: number;
-  updated: number;
-  errors: string[];
-}
-
-// ─── Constants ───────────────────────────────────────────────────────────────
-
-const GITLAB_API_BASE = process.env.GITLAB_API_URL ?? "https://gitlab.com/api/v4";
-const GITLAB_CLIENT_ID = process.env.GITLAB_CLIENT_ID ?? "";
-const GITLAB_CLIENT_SECRET = process.env.GITLAB_CLIENT_SECRET ?? "";
-const GITLAB_AUTH_URL = process.env.GITLAB_URL ?? "https://gitlab.com";
-
-// ─── OAuth ───────────────────────────────────────────────────────────────────
-
-/**
- * Build the GitLab OAuth authorization URL.
- */
 export function getGitLabAuthUrl(state: string): string {
   const params = new URLSearchParams({
     client_id: GITLAB_CLIENT_ID,
-    redirect_uri: ${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/api/v1/auth/gitlab/callback,
+    redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/api/v1/auth/gitlab/callback`,
     scope: "api read_user",
     state,
     response_type: "code",
   });
-  return ${GITLAB_AUTH_URL}/oauth/authorize?;
+  return `${GITLAB_AUTH_URL}/oauth/authorize?${params.toString()}`;
 }
 
-/**
- * Exchange the OAuth code for an access token.
- */
 export async function exchangeGitLabCode(code: string): Promise<{ access_token: string; token_type: string; scope: string }> {
-  const response = await fetch(${GITLAB_AUTH_URL}/oauth/token, {
+  const response = await fetch(`${GITLAB_AUTH_URL}/oauth/token`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       client_id: GITLAB_CLIENT_ID,
       client_secret: GITLAB_CLIENT_SECRET,
       code,
       grant_type: "authorization_code",
-      redirect_uri: ${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/api/v1/auth/gitlab/callback,
+      redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/api/v1/auth/gitlab/callback`,
     }),
   });
-
-  if (!response.ok) {
-    throw new TRPCError({
-      code: "INTERNAL_SERVER_ERROR",
-      message: "Failed to exchange GitLab authorization code",
-    });
-  }
-
-  const data = (await response.json()) as { access_token: string; token_type: string; scope: string; error?: string; error_description?: string };
-
-  if (data.error) {
-    throw new TRPCError({
-      code: "BAD_REQUEST",
-      message: data.error_description ?? data.error,
-    });
-  }
-
-  return data;
+  return response.json() as Promise<{ access_token: string; token_type: string; scope: string }>;
 }
 
-/**
- * Fetch the authenticated GitLab user profile.
- */
 export async function getGitLabUser(accessToken: string): Promise<GitLabUser> {
   return (await gitlabFetch("/user", accessToken)) as GitLabUser;
 }
 
-// ─── Project Operations ──────────────────────────────────────────────────────
-
-/**
- * List projects accessible to the authenticated user.
- */
 export async function listGitLabProjects(
   accessToken: string,
-  options?: { page?: number; perPage?: number; owned?: boolean; membership?: boolean },
+  options?: { membership?: boolean; per_page?: number },
 ): Promise<GitLabProject[]> {
   const params = new URLSearchParams({
-    page: String(options?.page ?? 1),
-    per_page: String(options?.perPage ?? 20),
+    membership: String(options?.membership ?? true),
+    per_page: String(options?.per_page ?? 20),
     order_by: "last_activity_at",
     sort: "desc",
   });
-  if (options?.owned) params.set("owned", "true");
-  if (options?.membership) params.set("membership", "true");
-
-  const projects = await gitlabFetch(/projects?, accessToken);
+  const projects = await gitlabFetch(`/projects?${params.toString()}`, accessToken);
   return projects as GitLabProject[];
 }
 
-/**
- * Get a specific project by ID or path.
- */
 export async function getGitLabProject(
   accessToken: string,
-  projectId: number,
+  projectId: string,
 ): Promise<GitLabProject> {
-  return (await gitlabFetch(/projects/, accessToken)) as GitLabProject;
+  return (await gitlabFetch(`/projects/${encodeURIComponent(projectId)}`, accessToken)) as GitLabProject;
 }
 
-// ─── Issue Sync ──────────────────────────────────────────────────────────────
-
-/**
- * Sync issues from a GitLab project into Mini Linear issues.
- */
 export async function syncGitLabIssues(
-  integrationId: string,
-  gitlabProjectId: number,
-  projectId: string,
-): Promise<GitLabSyncResult> {
-  const integration = await prisma.integration.findUnique({
-    where: { id: integrationId },
-  });
-
-  if (!integration || !integration.accessToken) {
-    throw new TRPCError({
-      code: "NOT_FOUND",
-      message: "Integration not found or missing access token",
-    });
-  }
-
-  const accessToken = integration.accessToken;
-  const result: GitLabSyncResult = { synced: 0, created: 0, updated: 0, errors: [] };
-
-  try {
-    let page = 1;
-    let hasMore = true;
-
-    while (hasMore) {
-      const issues = (await gitlabFetch(
-        /projects//issues?state=all&per_page=100&page=,
-        accessToken,
-      )) as GitLabIssue[];
-
-      if (issues.length === 0) {
-        hasMore = false;
-        break;
-      }
-
-      for (const glIssue of issues) {
-        try {
-          const status = glIssue.state === "closed" ? "DONE" : "TODO";
-          const labels = glIssue.labels;
-
-          const existing = await prisma.issue.findFirst({
-            where: {
-              projectId,
-              customFields: { contains: "gitlabIssueId": },
-            },
-          });
-
-          if (existing) {
-            await prisma.issue.update({
-              where: { id: existing.id },
-              data: {
-                title: glIssue.title,
-                description: glIssue.description ?? undefined,
-                status: status as never,
-                labels: JSON.stringify(labels),
-              },
-            });
-            result.updated++;
-          } else {
-            const project = await prisma.project.findUnique({
-              where: { id: projectId },
-              select: { ownerId: true },
-            });
-
-            await prisma.issue.create({
-              data: {
-                title: glIssue.title,
-                description: glIssue.description ?? undefined,
-                status: status as never,
-                priority: "NONE",
-                labels: JSON.stringify(labels),
-                reporterId: project?.ownerId ?? "system",
-                projectId,
-                customFields: JSON.stringify({
-                  gitlabIssueId: glIssue.id,
-                  gitlabIssueIid: glIssue.iid,
-                  gitlabUrl: glIssue.web_url,
-                  source: "gitlab",
-                }),
-              },
-            });
-            result.created++;
-          }
-
-          result.synced++;
-        } catch (err) {
-          result.errors.push(
-            Failed to sync issue !: ,
-          );
-        }
-      }
-
-      page++;
-      if (issues.length < 100) hasMore = false;
-    }
-
-    await prisma.integration.update({
-      where: { id: integrationId },
-      data: { lastSyncAt: new Date() },
-    });
-  } catch (err) {
-    throw new TRPCError({
-      code: "INTERNAL_SERVER_ERROR",
-      message: GitLab sync failed: ,
-    });
-  }
-
-  return result;
-}
-
-// ─── Merge Request Linking ───────────────────────────────────────────────────
-
-/**
- * Link a GitLab merge request to a Mini Linear issue.
- */
-export async function linkGitLabMR(
   accessToken: string,
-  gitlabProjectId: number,
-  mrIid: number,
   projectId: string,
-): Promise<{ linked: boolean; issueId?: string }> {
-  const mr = (await gitlabFetch(
-    /projects//merge_requests/,
+  projectPath: string,
+): Promise<number> {
+  const issues = (await gitlabFetch(
+    `/projects/${encodeURIComponent(projectPath)}/issues?state=all&per_page=100`,
     accessToken,
-  )) as GitLabMergeRequest;
-
-  const issueRefs = extractIssueReferences(mr.description ?? "");
-
-  if (issueRefs.length === 0) {
-    return { linked: false };
-  }
-
-  let linkedIssueId: string | undefined;
-
-  for (const ref of issueRefs) {
-    const issue = await prisma.issue.findFirst({
-      where: {
-        projectId,
-        OR: [
-          { title: { contains: ref } },
-          { customFields: { contains: "gitlabIssueIid": } },
-        ],
-      },
+  )) as GitLabIssue[];
+  let count = 0;
+  for (const issue of issues) {
+    const exists = await prisma.issue.findFirst({
+      where: { projectId, externalId: String(issue.iid) },
     });
-
-    if (issue) {
-      const customFields = parseCustomFields(issue.customFields);
-      const linkedMRs = (customFields.linkedMRs as number[] | undefined) ?? [];
-      if (!linkedMRs.includes(mrIid)) {
-        linkedMRs.push(mrIid);
-      }
-
-      await prisma.issue.update({
-        where: { id: issue.id },
+    if (!exists) {
+      await prisma.issue.create({
         data: {
-          customFields: JSON.stringify({
-            ...customFields,
-            linkedMRs,
-            lastMRSyncAt: new Date().toISOString(),
-          }),
+          projectId,
+          title: issue.title,
+          description: issue.description ?? "",
+          status: issue.state === "closed" ? "DONE" : "TODO",
+          externalId: String(issue.iid),
+          source: "gitlab",
         },
       });
-
-      linkedIssueId = issue.id;
+      count++;
     }
   }
-
-  return { linked: !!linkedIssueId, issueId: linkedIssueId };
+  return count;
 }
 
-// ─── Helper Functions ────────────────────────────────────────────────────────
-
-/**
- * Make an authenticated request to the GitLab API.
- */
-async function gitlabFetch(path: string, accessToken: string): Promise<unknown> {
-  const response = await fetch(${GITLAB_API_BASE}, {
+async function gitlabFetch(
+  path: string,
+  accessToken: string,
+  options?: RequestInit,
+): Promise<unknown> {
+  const response = await fetch(`${GITLAB_API_BASE}${path}`, {
+    ...options,
     headers: {
-      Authorization: Bearer ,
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+      ...options?.headers,
     },
   });
-
   if (!response.ok) {
-    const body = await response.text();
-    throw new TRPCError({
-      code: "INTERNAL_SERVER_ERROR",
-      message: GitLab API error (): ,
-    });
+    throw new Error(`GitLab API error: ${response.status} ${response.statusText}`);
   }
-
   return response.json();
 }
-
-/**
- * Extract issue number references from text.
- * Matches patterns like "ML-42", "#42", "fixes #42".
- */
-function extractIssueReferences(text: string): number[] {
-  const patterns = [
-    /(?:fixes|closes|resolves|refs?)\s+#?(\d+)/gi,
-    /(?:ML|DEV|PROJ)-(\d+)/gi,
-  ];
-
-  const refs = new Set<number>();
-  for (const pattern of patterns) {
-    let match;
-    while ((match = pattern.exec(text)) !== null) {
-      const num = parseInt(match[1], 10);
-      if (!isNaN(num)) refs.add(num);
-    }
-  }
-
-  return Array.from(refs);
-}
-
-/**
- * Parse JSON custom fields string safely.
- */
-function parseCustomFields(raw: string): Record<string, unknown> {
-  try {
-    const parsed = JSON.parse(raw);
-    if (typeof parsed === "object" && parsed !== null) return parsed;
-    return {};
-  } catch {
-    return {};
-  }
+export async function linkGitLabMR(
+  accessToken: string,
+  projectId: string,
+  issueId: string,
+  mrIid: number,
+): Promise<void> {
+  const issue = await prisma.issue.findUnique({ where: { id: issueId } });
+  if (!issue) throw new Error("Issue not found");
+  await prisma.issue.update({
+    where: { id: issueId },
+    data: {
+      externalPrNumber: mrIid,
+      externalPrUrl: `${GITLAB_API_BASE}/projects/${projectId}/merge_requests/${mrIid}`,
+    },
+  });
 }

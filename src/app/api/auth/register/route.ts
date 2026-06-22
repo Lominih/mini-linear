@@ -1,5 +1,5 @@
-import { NextRequest } from "next/server";
-import { SystemRole } from "@/generated/prisma/client";
+﻿import { NextRequest } from "next/server";
+import { SystemRole } from "@/generated/prisma";
 import { hashPassword, validateEmail, validatePassword, generateTokenPair } from "@/server/auth";
 import { z } from "zod";
 

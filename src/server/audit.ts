@@ -1,7 +1,7 @@
-import { prisma } from "@/server/prisma";
-import { AuditAction } from "@/generated/prisma/client";
+﻿import { prisma } from "@/server/prisma";
+import { AuditAction } from "@/generated/prisma";
 
-// 鈹€鈹€鈹€ Types 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+// ------ Types ----------------------------------------------------------------------------------------------
 
 export interface AuditLogEntry {
   action: AuditAction;
@@ -40,7 +40,7 @@ export interface AuditLogResult {
   total: number;
 }
 
-// 鈹€鈹€鈹€ Core Functions 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+// ------ Core Functions ----------------------------------------------------------------------------
 
 export async function logAction(entry: AuditLogEntry): Promise<void> {
   try {
@@ -130,7 +130,7 @@ export async function logComment(
   });
 }
 
-// 鈹€鈹€鈹€ Query Functions 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+// ------ Query Functions --------------------------------------------------------------------------
 
 export async function queryAuditLogs(query: AuditLogQuery): Promise<AuditLogResult> {
   const { entity, entityId, userId, action, startDate, endDate, limit = 50, offset = 0 } = query;
@@ -167,7 +167,7 @@ export async function queryAuditLogs(query: AuditLogQuery): Promise<AuditLogResu
   return { logs, total };
 }
 
-// 鈹€鈹€鈹€ tRPC Middleware for Auto-Logging 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+// ------ tRPC Middleware for Auto-Logging ----------------------------------------
 
 import { TRPCError } from "@trpc/server";
 import { type Context } from "@/server/context";
