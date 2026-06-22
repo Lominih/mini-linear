@@ -1,4 +1,4 @@
-﻿name: CI
+name: CI
 
 on:
   push:
@@ -28,6 +28,10 @@ jobs:
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: "file:./test.db"
+      JWT_SECRET: "test-secret"
+      JWT_REFRESH_SECRET: "test-refresh-secret"
     steps:
       - uses: actions/checkout@v4
 
