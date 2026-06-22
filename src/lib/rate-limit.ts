@@ -89,3 +89,8 @@ export function rateLimit(options: RateLimitOptions = {}) {
 export const globalLimiter = rateLimit({ windowMs: 60000, max: 100 });
 export const apiLimiter = rateLimit({ windowMs: 60000, max: 30 });
 export const authLimiter = rateLimit({ windowMs: 60000, max: 10 });
+
+// ─── Login-Specific Limiter ──────────────────────────────────────────────────
+// Stricter limit: 5 attempts per 15 minutes per IP to complement account
+// lockout protection (see src/lib/account-lockout.ts).
+export const loginLimiter = rateLimit({ windowMs: 900_000, max: 5 });
