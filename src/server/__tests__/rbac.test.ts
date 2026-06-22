@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { SystemRole, ProjectMemberRole } from "@/generated/prisma/client";
+import { SystemRole, ProjectMemberRole } from "@/generated/prisma/enums";
 
 // Mock prisma before importing rbac
 vi.mock("@/server/prisma", () => ({
